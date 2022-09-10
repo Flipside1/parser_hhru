@@ -17,17 +17,25 @@ try:
         cursor.execute('SELECT version();')
         print(f'Server version: {cursor.fetchone()}')
 
-    # create a new table
+    # # create a new table
+    # with connection.cursor() as cursor:
+    #     cursor.execute(
+    #         """CREATE TABLE vacancies(
+    #             id serial PRIMARY KEY,
+    #             vacancy_name varchar(50) NOT NULL,
+    #             link_to_vacancy text NOT NULL);"""
+    #     )
+    #
+    #     print('[INFO] Table created successfully')
+
+    # insert data into a table
     with connection.cursor() as cursor:
         cursor.execute(
-            """CREATE TABLE users(
-                id serial PRIMARY KEY,
-                first_name varchar[100] NOT NULL,
-                nick_name varchar[100] NOT NULL);"""
+            """INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
+            ('Maxim', 'FLIPSIDE'), ('Oleg', 'Troll');"""
         )
 
-        print('[INFO] Table created successfully')
-
+        print('[INFO] Data was successfully inserted')
 
 
 except Exception as _ex:
