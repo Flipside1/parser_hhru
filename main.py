@@ -13,6 +13,9 @@ from config import host, user, password, db_name
 
 driver = webdriver.Firefox()
 
+string = None
+link = None
+
 
 class SearchVacancies:
 
@@ -23,34 +26,41 @@ class SearchVacancies:
     def parsing_names(self):
         """Ищет названия вакансий и ссылки на них
         После этого сохраняет в базу данных PostgreSQL"""
+        try:
+            db.count_strings()
+            # db.delete_table()  # deleting a table
+            # db.create_table()  # creating a table
+            search_name = ['django']  # по каким тегам ищутся вакансии
+            db.start_db()
+            self.transition_to_links()
 
-        # db.delete_table()  # deleting a table
-        # db.create_table()  # creating a table
-        search_name = ['django']  # по каким тегам ищутся вакансии
-        db.start_db()
+            for url in search_name:
+                driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # вписывает в поле слово вакансии
+                time.sleep(random.randrange(5, 10))
 
-        for url in search_name:
-            driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # вписывает в поле слово вакансии
-            time.sleep(random.randrange(5, 10))
+                self.amount_pages()  # считает количество страниц
 
-            self.amount_pages()  # считает количество страниц
+                for page in range(self.pages):  # переходит с одной страницы на другую
+                    driver.get(
+                        f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
 
-            for page in range(self.pages):  # переходит с одной страницы на другую
-                driver.get(
-                    f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
+                    driver.find_elements(By.CLASS_NAME, 'bloko-link')  # ищет класс, в котором содержатся названия вакансий
+                    elements = driver.find_elements(By.TAG_NAME, 'a')  # ищет элементы с тегом "а"
 
-                driver.find_elements(By.CLASS_NAME, 'bloko-link')  # ищет класс, в котором содержатся названия вакансий
-                elements = driver.find_elements(By.TAG_NAME, 'a')  # ищет элементы с тегом "а"
+                    for element in elements:  # перебирает все элементы, которые спарсились
+                        if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
+                            self.counter += 1  # счетчик +1 каждый раз
+                            name = element.text  # выводит текст названия вакансии
+                            url = element.get_attribute('href')  # находит ссылки на вакансии
+                            db.insert_date(name, url)  # записывает
 
-                for element in elements:  # перебирает все элементы, которые спарсились
-                    if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
-                        self.counter += 1  # счетчик +1 каждый раз
-                        name = element.text  # выводит текст названия вакансии
-                        url = element.get_attribute('href')  # находит ссылки на вакансии
-                        db.insert_date(name, url)  # записывает
+            driver.close()  # closing the browser
+            db.close_db()  # close connection with PostgreSQL
 
-        driver.close()  # closing the browser
-        db.close_db()  # close connection with PostgreSQL
+        except Exception as _ex:
+            driver.close()
+            db.close_db()
+            print(f"[ERROR] {_ex}")
 
     def amount_pages(self):
         """Ищет количество страниц на сайте"""
@@ -70,13 +80,24 @@ class SearchVacancies:
             driver.get(f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={i}&hhtmFrom=vacancy_search_list')
 
     def transition_to_links(self):
-        pass
+        """Goes to each vacancy by links from the database
+        and parses data from it"""
+        db.count_strings()
+
+        for num in range(1, string+1):
+            db.following_a_link(num)
+            print('1')
+            driver.get(link)
+            print('2')
+            time.sleep(random.randrange(3, 7))
 
 
 class DataBase:
 
     def __init__(self):
+        self.string = None
         self.connection = None
+        self.cursor = None
         self.start_db()
 
     def start_db(self):
@@ -90,54 +111,66 @@ class DataBase:
                 password=password,
                 database=db_name
             )
+            self.cursor = self.connection.cursor()  # defines the cursor
             self.connection.autocommit = True  # enable autosave data
 
-            # writing a version PostgreSQL
-            with self.connection.cursor() as cursor:
-                cursor.execute('SELECT version();')
-                print(f'Server version: {cursor.fetchone()}')
+            self.cursor.execute('SELECT version();')  # writing a version PostgreSQL
+            print(f'Server version: {self.cursor.fetchone()}')
 
         except Exception as _ex:
             print('[INFO] Error while working with PostgreSQL', _ex)
             self.connection.close()  # closing the PostgreSQL
 
+    def insert_date(self, name, url):
+        """Insert data into table"""
+
+        self.cursor.execute(
+            f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
+            ('{name}', '{url}');"""
+        )
+        print('[INFO] Data was successfully inserted')
+
+    def count_strings(self):
+        """Counts the number of rows in a table"""
+
+        global string
+        self.cursor.execute("SELECT count(*) FROM vacancies;")
+        strings = self.cursor.fetchone()
+        string = int(strings[0])  # number of rows in a table
+
+    def following_a_link(self, num):
+
+        global link
+
+        self.cursor.execute(f"SELECT link_to_vacancy FROM vacancies WHERE id = '{num}';")
+        links = self.cursor.fetchone()
+        link = links[0]
+        print(link)
+
     def create_table(self):
         """Creating a new table"""
 
         # create a new table
-        with self.connection.cursor() as cursor:
-            cursor.execute(
-                """CREATE TABLE vacancies(
-                    id serial PRIMARY KEY,
-                    vacancy_name varchar(100) NOT NULL,
-                    link_to_vacancy text NOT NULL);"""
-            )
-            print('[INFO] Table created successfully')
-        
-    def insert_date(self, name, url):
-        """Insert data into table"""
-
-        with self.connection.cursor() as cursor:
-            cursor.execute(
-                f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
-                ('{name}', '{url}');"""
-            )
-            print('[INFO] Data was successfully inserted')
+        self.cursor.execute(
+            """CREATE TABLE vacancies(
+                id serial PRIMARY KEY,
+                vacancy_name varchar(100) NOT NULL,
+                link_to_vacancy text NOT NULL);"""
+        )
+        print('[INFO] Table created successfully')
 
     def delete_table(self):
         """Deleting a table"""
 
-        with self.connection.cursor() as cursor:
-            cursor.execute(f"""DROP TABLE vacancies;""")
-            print('[INFO] Table was deleted')
+        self.cursor.execute("DROP TABLE vacancies;")
+        print('[INFO] Table was deleted')
 
     def close_db(self):
         """Close connection with PostgreSQL"""
 
+        self.cursor.close()
         self.connection.close()
         print('[INFO] PostgreSQL connection closed')
-
-
 
 
 search = SearchVacancies()
