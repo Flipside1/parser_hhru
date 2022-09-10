@@ -31,8 +31,8 @@ try:
     # insert data into a table
     with connection.cursor() as cursor:
         cursor.execute(
-            """INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
-            ('Maxim', 'FLIPSIDE'), ('Oleg', 'Troll');"""
+            f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
+            ('{arg1}', '{arg2}');"""
         )
 
         print('[INFO] Data was successfully inserted')
