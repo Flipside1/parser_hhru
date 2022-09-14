@@ -162,8 +162,8 @@ class SearchVacancies:
             description()  # calls variables: trainee, junior, middle, senior
             list_skills = key_skills()
 
-            print(experience, trainee, junior, middle, senior, list_skills)
-            db.insert_other_data(experience, trainee, junior, middle, senior, list_skills)
+            print(experience, trainee, junior, middle, senior)
+            db.insert_other_data(experience, trainee, junior, middle, senior)
             time.sleep(random.randrange(3, 7))
 
 
@@ -210,10 +210,10 @@ class DataBase:
 
 
 
-    def insert_other_data(self, experience, trainee, junior, middle, senior, list_skills):
+    def insert_other_data(self, experience, trainee, junior, middle, senior):
         self.cursor.execute(
-            f"""INSERT INTO vacancies (required_experience, trainee, junior, middle, senior, key_skills) VALUES
-                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}', '{list_skills}');"""
+            f"""INSERT INTO vacancies (required_experience, trainee, junior, middle, senior) VALUES
+                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}');"""
         )
 
 
