@@ -1,3 +1,4 @@
+import re
 import time
 import random
 
@@ -47,7 +48,12 @@ class SearchVacancies:
                         if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
                             name = element.text  # выводит текст названия вакансии
                             url = element.get_attribute('href')  # находит ссылки на вакансии
-                            db.insert_date(name, url)  # записывает
+
+
+
+
+
+                            db.insert_name_and_link(name, url)  # записывает
 
             self.driver.close()  # closing the browser
             db.close_db()  # close connection with PostgreSQL
@@ -64,7 +70,7 @@ class SearchVacancies:
 
         # записывает в переменную количество страниц на сайте
         pages = self.driver.find_element(By.CSS_SELECTOR,
-                                    '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div:nth-child(3) > div.sticky-sidebar-and-content--NmOyAQ7IxIOkgRiBRSEg > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-9.bloko-column_l-13 > div > div.bloko-gap.bloko-gap_top > div > span:nth-child(6) > span.pager-item-not-in-short-range > a > span')
+                                         '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div:nth-child(3) > div.sticky-sidebar-and-content--NmOyAQ7IxIOkgRiBRSEg > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-9.bloko-column_l-13 > div > div.bloko-gap.bloko-gap_top > div > span:nth-child(6) > span.pager-item-not-in-short-range > a > span')
         self.pages = int(pages.text)  # преобразовывает текст в числовой формат
         print(self.pages)
 
@@ -75,34 +81,89 @@ class SearchVacancies:
             self.driver.get(f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={i}&hhtmFrom=vacancy_search_list')
 
     def transition_to_links(self):
-        """Goes to each vacancy by links from the database
+        """goes to each vacancy by links from the database
         and parses data from it"""
 
+        trainee = 0
+        junior = 0
+        middle = 0
+        senior = 0
+
         # iterates over all links in a table
-        for num in range(1, 11):
-            print(num)
+        for num in range(1, db.count_strings()+1):
+
+            # search elements of the description for vacancy
             self.driver.get(db.following_a_link(num))  # clicks to links for each vacancy in a table
-            self.driver.find_element(By.CLASS_NAME, 'g-user-content')
-            elements = self.driver.find_elements(By.CSS_SELECTOR, '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
 
-            for element in elements:
-                element = element.text.lower()
-                name = db.vacancy_name(num).lower()
+            def description():
+                """getting elements from the description class"""
 
-                print(name)
+                try:
+                    self.driver.find_element(By.CLASS_NAME, 'g-user-content')  # description class
+                    description_elements = self.driver.find_elements(By.CSS_SELECTOR,
+                                                                     '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
 
-                if ('стажер' in [name or element]) or ('trainee' in [name or element]):
-                    print('trainee')
+                    for element in description_elements:
+                        # makes all letters in text small
+                        element = element.text.lower()
+                        name = db.vacancy_name(num).lower()
 
-                if ('junior' in (name or element)) or ('джуниор' in (name, element)) or ('джун' in (name, element)):
-                    print('junior')
+                        # updates the value of variables
+                        global trainee, junior, middle, senior
 
-                if ('middle' in (name or element)) or ('mid' in (name, element)) or ('мидл' in (name, element)) or ('миддл' in (name, element)):
-                    print('middle')
+                        trainee = 0
+                        junior = 0
+                        middle = 0
+                        senior = 0
 
-                if ('senior' in [name or element]) or ('сеньор' in [name or element]) or ('синьор' in [name or element]):
-                    print('senior')
+                        # if the given words are in the text or vacancy name, then updates the value of the variable to 1
+                        if (('стажер' in name) or ('trainee' in name)) or (('стажер' in element) or ('trainee' in element)):
+                            trainee = 1
+                            return trainee
+                        if (('junior' in name) or ('джуниор' in name) or ('джун' in name)) or (('junior' in element) or ('джуниор' in element) or ('джун' in element)):
+                            junior = 1
+                            return junior
+                        if (('middle' in name) or ('mid' in name) or ('мидл' in name) or ('миддл' in name)) or (('middle' in element) or ('mid' in element) or ('мидл' in element) or ('миддл' in element)):
+                            middle = 1
+                            return middle
+                        if (('senior' in name) or ('сеньор' in name) or ('синьор' in name)) or (('senior' in element) or ('сеньор' in element) or ('синьор' in element)):
+                            senior = 1
+                            return senior
 
+                except Exception as _ex:
+                    print(_ex)
+
+
+            def required_experience():
+
+                try:
+                    self.driver.find_element(By.CLASS_NAME, 'vacancy-description-list-item')  # required experience class
+                    experience_element = self.driver.find_element(By.CSS_SELECTOR,
+                                                                   '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span')
+                    nums = re.sub(r'[^0-9–]+', r'', experience_element.text)  # removes all characters except 0-9 and –
+                    return nums
+
+                except Exception as _ex:
+                    print(_ex)
+
+            def key_skills():
+
+                skills = []
+                for number in range(1, 31):
+
+                    try:
+                        element = self.driver.find_element(By.XPATH, f'//*[@id="HH-React-Root"]/div/div[3]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div[3]/div[2]/div/div[{number}]/span')
+                        element = element.text
+                        skills.append(element)
+                    except Exception:
+                        break
+                return skills
+
+            experience = required_experience()
+            description()  # calls variables: trainee, junior, middle, senior
+            list_skills = key_skills()
+
+            db.insert_other_data(experience, trainee, junior, middle, senior, list_skills)
             time.sleep(random.randrange(3, 7))
 
 
@@ -135,14 +196,25 @@ class DataBase:
             print('[INFO] Error while working with PostgreSQL', _ex)
             self.connection.close()  # closing the PostgreSQL
 
-    def insert_date(self, name, url):
-        """Insert data into table"""
+
+    def insert_name_and_link(self, name, url):
+        """Insert data into table"""  # имена и ссылки
 
         self.cursor.execute(
             f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
             ('{name}', '{url}');"""
         )
         print('[INFO] Data was successfully inserted')
+
+
+
+    def insert_other_data(self, experience, trainee, junior, middle, senior, characteristic, list_skills):
+        self.cursor.execute(
+            f"""INSERT INTO vacancies (required_experience, trainee, junior, middle, senior, key_skills) VALUES
+                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}', '{characteristic}', '{list_skills}');"""
+        )
+
+
 
     def count_strings(self):
         """Counts the number of rows in a table"""
@@ -175,10 +247,12 @@ class DataBase:
                 id serial PRIMARY KEY,
                 vacancy_name varchar(100) NOT NULL,
                 link_to_vacancy text NOT NULL,
+                required_experience text,
                 trainee text,
                 junior text,
                 middle text,
-                senior text);"""
+                senior text,
+                key_skills text[]);"""
         )
         print('[INFO] Table created successfully')
 
