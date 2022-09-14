@@ -24,12 +24,14 @@ class SearchVacancies:
         """Ищет названия вакансий и ссылки на них
         После этого сохраняет в базу данных PostgreSQL"""
         try:
-            db.count_strings()
-            # db.delete_table()  # deleting a table
-            # db.create_table()  # creating a table
+            db.count_strings()  # page count on request
+
+            db.delete_table()  # deleting a table
+            db.create_table()  # creating a table
             search_name = ['django']  # по каким тегам ищутся вакансии
+
             db.start_db()
-            self.transition_to_links()
+            # self.transition_to_links()
 
             for url in search_name:
                 self.driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # вписывает в поле слово вакансии
@@ -48,12 +50,9 @@ class SearchVacancies:
                         if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
                             name = element.text  # выводит текст названия вакансии
                             url = element.get_attribute('href')  # находит ссылки на вакансии
+                            db.insert_name_and_link(name, url)  # записывает названия и ссылки
 
-
-
-
-
-                            db.insert_name_and_link(name, url)  # записывает
+            self.transition_to_links()
 
             self.driver.close()  # closing the browser
             db.close_db()  # close connection with PostgreSQL
@@ -163,6 +162,7 @@ class SearchVacancies:
             description()  # calls variables: trainee, junior, middle, senior
             list_skills = key_skills()
 
+            print(experience, trainee, junior, middle, senior, list_skills)
             db.insert_other_data(experience, trainee, junior, middle, senior, list_skills)
             time.sleep(random.randrange(3, 7))
 
@@ -200,18 +200,20 @@ class DataBase:
     def insert_name_and_link(self, name, url):
         """Insert data into table"""  # имена и ссылки
 
-        self.cursor.execute(
-            f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
-            ('{name}', '{url}');"""
-        )
-        print('[INFO] Data was successfully inserted')
+        try:
+            self.cursor.execute(
+                f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
+                ('{name}', '{url}');"""
+            )
+        except Exception as _ex:
+            print('[INFO] No data has been inserted')
 
 
 
-    def insert_other_data(self, experience, trainee, junior, middle, senior, characteristic, list_skills):
+    def insert_other_data(self, experience, trainee, junior, middle, senior, list_skills):
         self.cursor.execute(
             f"""INSERT INTO vacancies (required_experience, trainee, junior, middle, senior, key_skills) VALUES
-                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}', '{characteristic}', '{list_skills}');"""
+                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}', '{list_skills}');"""
         )
 
 
