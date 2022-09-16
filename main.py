@@ -26,8 +26,8 @@ class SearchVacancies:
         try:
             db.count_strings()  # page count on request
 
-            db.delete_table()  # deleting a table
-            db.create_table()  # creating a table
+            # db.delete_table()  # deleting a table
+            # db.create_table()  # creating a table
             search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # по каким тегам ищутся вакансии
 
             db.start_db()
@@ -42,14 +42,18 @@ class SearchVacancies:
                     self.driver.get(
                         f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
 
-                    self.driver.find_elements(By.CLASS_NAME, 'bloko-link')  # ищет класс, в котором содержатся названия вакансий
-                    elements = self.driver.find_elements(By.TAG_NAME, 'a')  # ищет элементы с тегом "а"
+                    try:
+                        elements = WebDriverWait(self.driver, 2).until(
+                            EC.presence_of_all_elements_located((By.TAG_NAME, 'a'))
+                        )  # searching "a" tag
 
-                    for element in elements:  # перебирает все элементы, которые спарсились
-                        if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
-                            name = element.text  # выводит текст названия вакансии
-                            url = element.get_attribute('href')  # находит ссылки на вакансии
-                            db.insert_name_and_link(name, url)  # записывает названия и ссылки
+                        for element in elements:  # перебирает все элементы, которые спарсились
+                            if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
+                                name = element.text  # выводит текст названия вакансии
+                                url = element.get_attribute('href')  # находит ссылки на вакансии
+                                db.insert_name_and_link(name, url)  # записывает названия и ссылки
+                    except Exception as _ex:
+                        print(_ex)
 
                 self.transition_to_links()
 
@@ -100,9 +104,9 @@ class SearchVacancies:
                 """getting elements from the description class"""
 
                 try:
-                    self.driver.find_element(By.CLASS_NAME, 'g-user-content')  # description class
-                    description_elements = self.driver.find_elements(By.CSS_SELECTOR,
-                                                                     '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
+                    description_elements = WebDriverWait(self.driver, 2).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div'))
+                    )  # elements on description
 
                     for element in description_elements:
 
@@ -135,12 +139,10 @@ class SearchVacancies:
             def required_experience():
 
                 try:
-                    WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, 'vacancy-description-list-item'))
+                    experience_element = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span'))
                     )
-                    self.driver.find_element(By.CLASS_NAME, 'vacancy-description-list-item')  # required experience class
-                    experience_element = self.driver.find_element(By.CSS_SELECTOR,
-                                                                  '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span')
+
                     nums = re.sub(r'[^0-9–]+', r'', experience_element.text)  # removes all characters except 0-9 and –
                     return nums
 
@@ -154,11 +156,12 @@ class SearchVacancies:
                 for number in range(1, 31):
 
                     try:
-                        self.driver.find_element(By.CLASS_NAME, 'bloko-tag-list')
-                        element = self.driver.find_element(By.CSS_SELECTOR, f'div:nth-child(3) > div > div:nth-child({number}) > span')
+                        element = WebDriverWait(self.driver, 3).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, f'div:nth-child(3) > div > div:nth-child({number}) > span'))
+                        )
                         element = element.text
                         skills.append(element)
-                    except Exception:
+                    except Exception as _ex:
                         break
 
                 if len(skills) < 2:
