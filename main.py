@@ -4,12 +4,15 @@ import random
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 
 import psycopg2
 from config import host, user, password, db_name
 
-
 string = None
+
 
 class SearchVacancies:
 
@@ -25,125 +28,32 @@ class SearchVacancies:
 
             db.delete_table()  # deleting a table
             db.create_table()  # creating a table
-            search_name = ['django']  # по каким тегам ищутся вакансии
+            search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # по каким тегам ищутся вакансии
+
             db.start_db()
 
             for url in search_name:
                 self.driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # вписывает в поле слово вакансии
+                time.sleep(random.randrange(3, 5))
+
                 self.amount_pages()  # считает количество страниц
 
-                for page in range(self.pages):
-
-                    trainee = 0
-                    junior = 0
-                    middle = 0
-                    senior = 0
-
-                    # переходит с одной страницы на другую
+                for page in range(self.pages):  # переходит с одной страницы на другую
                     self.driver.get(
                         f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
+
                     self.driver.find_elements(By.CLASS_NAME, 'bloko-link')  # ищет класс, в котором содержатся названия вакансий
                     elements = self.driver.find_elements(By.TAG_NAME, 'a')  # ищет элементы с тегом "а"
 
-
-
                     for element in elements:  # перебирает все элементы, которые спарсились
                         if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
-
                             name = element.text  # выводит текст названия вакансии
-                            url = element.get_attribute('href')  # находит ссылку на вакансию
+                            url = element.get_attribute('href')  # находит ссылки на вакансии
+                            db.insert_name_and_link(name, url)  # записывает названия и ссылки
 
-                            print(url)
-                            # search elements of the description for vacancy
-                            self.driver.get(url)  # clicks to links for each vacancy in a table
-                            print(url)
-                            def description():
-                                """getting elements from the description class"""
+                self.transition_to_links()
 
-                                try:
-                                    self.driver.find_element(By.CLASS_NAME, 'g-user-content')  # description class
-                                    # collects all data from the description
-                                    description_elements = self.driver.find_elements(By.CSS_SELECTOR,
-                                                                                     '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
-
-                                    for d_element in description_elements:
-                                        low_name = name.lower()
-                                        d_element = d_element.text.lower()
-                                        print(low_name, d_element)
-
-                                        # updates the value of variables
-                                        global trainee, junior, middle, senior
-
-                                        trainee = 0
-                                        junior = 0
-                                        middle = 0
-                                        senior = 0
-
-                                        # if the given words are in the text or vacancy name, then updates the value of the variable to 1
-                                        if (('стажер' in low_name) or ('trainee' in low_name)) or (
-                                                ('стажер' in d_element) or ('trainee' in d_element)):
-                                            trainee = 1
-                                            return trainee
-                                        if (('junior' in low_name) or ('джуниор' in low_name) or ('джун' in low_name)) or (
-                                                ('junior' in d_element) or ('джуниор' in d_element) or ('джун' in d_element)):
-
-                                            junior = 1
-                                            return junior
-                                        if (('middle' in low_name) or ('mid' in low_name) or ('мидл' in low_name) or ('миддл' in low_name)) or (
-                                                ('middle' in d_element) or ('mid' in d_element) or ('мидл' in d_element) or ('миддл' in d_element)):
-
-                                            middle = 1
-                                            return middle
-                                        if (('senior' in low_name) or ('сеньор' in low_name) or ('синьор' in low_name)) or (
-                                                ('senior' in d_element) or ('сеньор' in d_element) or ('синьор' in d_element)):
-                                            senior = 1
-                                            return senior
-
-                                except Exception as _ex:
-                                    print(_ex)
-
-                            def required_experience():
-
-                                try:
-                                    self.driver.find_element(By.CLASS_NAME,
-                                                             'vacancy-description-list-item')  # required experience class
-                                    exp_element = self.driver.find_element(By.CSS_SELECTOR,
-                                                                                  '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span')
-                                    nums = re.sub(r'[^0-9–]+', r'',
-                                                  exp_element.text)  # removes all characters except 0-9 and –
-                                    return nums
-
-                                except Exception as _ex:
-                                    print(_ex)
-
-                            def key_skills():
-
-                                skills = []
-                                for number in range(1, 31):
-
-                                    try:
-                                        key = self.driver.find_element(By.XPATH,
-                                                                           f'//*[@id="HH-React-Root"]/div/div[3]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div[3]/div[2]/div/div[{number}]/span')
-                                        key = key.text
-                                        skills.append(key)
-                                    except Exception:
-                                        break
-
-                                return skills
-
-                            experience = required_experience()
-                            description()  # calls variables: trainee, junior, middle, senior
-                            list_skills = key_skills()
-
-                            print(name, url, experience, trainee, junior, middle, senior)
-                            db.insert_name_and_link(name, url, experience, trainee, junior, middle, senior)  # записывает названия и ссылки
-                            time.sleep(random.randrange(3, 7))
-
-                            self.driver.back()
-
-
-            # self.transition_to_links()
-
+            db.duplicate_deleting()  # removes duplicate lines
             self.driver.close()  # closing the browser
             db.close_db()  # close connection with PostgreSQL
 
@@ -169,92 +79,98 @@ class SearchVacancies:
         for i in range(self.pages):  # переходит с одной ссылки (страницы) на другую
             self.driver.get(f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={i}&hhtmFrom=vacancy_search_list')
 
-    # def transition_to_links(self):
-    #     """goes to each vacancy by links from the database
-    #     and parses data from it"""
-    #
-    #     trainee = 0
-    #     junior = 0
-    #     middle = 0
-    #     senior = 0
-    #
-    #     # iterates over all links in a table
-    #     for num in range(1, db.count_strings()+1):
-    #
-    #         # search elements of the description for vacancy
-    #         self.driver.get(db.following_a_link(num))  # clicks to links for each vacancy in a table
-    #
-    #         def description():
-    #             """getting elements from the description class"""
-    #
-    #             try:
-    #                 self.driver.find_element(By.CLASS_NAME, 'g-user-content')  # description class
-    #                 description_elements = self.driver.find_elements(By.CSS_SELECTOR,
-    #                                                                  '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
-    #
-    #                 for element in description_elements:
-    #                     # makes all letters in text small
-    #                     element = element.text.lower()
-    #                     name = db.vacancy_name(num).lower()
-    #
-    #                     # updates the value of variables
-    #                     global trainee, junior, middle, senior
-    #
-    #                     trainee = 0
-    #                     junior = 0
-    #                     middle = 0
-    #                     senior = 0
-    #
-    #                     # if the given words are in the text or vacancy name, then updates the value of the variable to 1
-    #                     if (('стажер' in name) or ('trainee' in name)) or (('стажер' in element) or ('trainee' in element)):
-    #                         trainee = 1
-    #                         return trainee
-    #                     if (('junior' in name) or ('джуниор' in name) or ('джун' in name)) or (('junior' in element) or ('джуниор' in element) or ('джун' in element)):
-    #                         junior = 1
-    #                         return junior
-    #                     if (('middle' in name) or ('mid' in name) or ('мидл' in name) or ('миддл' in name)) or (('middle' in element) or ('mid' in element) or ('мидл' in element) or ('миддл' in element)):
-    #                         middle = 1
-    #                         return middle
-    #                     if (('senior' in name) or ('сеньор' in name) or ('синьор' in name)) or (('senior' in element) or ('сеньор' in element) or ('синьор' in element)):
-    #                         senior = 1
-    #                         return senior
-    #
-    #             except Exception as _ex:
-    #                 print(_ex)
-    #
-    #
-    #         def required_experience():
-    #
-    #             try:
-    #                 self.driver.find_element(By.CLASS_NAME, 'vacancy-description-list-item')  # required experience class
-    #                 experience_element = self.driver.find_element(By.CSS_SELECTOR,
-    #                                                                '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span')
-    #                 nums = re.sub(r'[^0-9–]+', r'', experience_element.text)  # removes all characters except 0-9 and –
-    #                 return nums
-    #
-    #             except Exception as _ex:
-    #                 print(_ex)
-    #
-    #         def key_skills():
-    #
-    #             skills = []
-    #             for number in range(1, 31):
-    #
-    #                 try:
-    #                     element = self.driver.find_element(By.XPATH, f'//*[@id="HH-React-Root"]/div/div[3]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div[3]/div[2]/div/div[{number}]/span')
-    #                     element = element.text
-    #                     skills.append(element)
-    #                 except Exception:
-    #                     break
-    #             return skills
-    #
-    #         experience = required_experience()
-    #         description()  # calls variables: trainee, junior, middle, senior
-    #         list_skills = key_skills()
-    #
-    #         print(experience, trainee, junior, middle, senior)
-    #         db.insert_other_data(experience, trainee, junior, middle, senior)
-    #         time.sleep(random.randrange(3, 7))
+    def transition_to_links(self):
+        """goes to each vacancy by links from the database
+        and parses data from it"""
+
+        trainee = None
+        junior = None
+        middle = None
+        senior = None
+
+        skills = [0, 0, 0]
+
+        # iterates over all links in a table
+        for num in range(1, db.count_strings()+1):
+
+            link = db.following_a_link(num)
+            self.driver.get(link)  # clicks to links for each vacancy in a table
+
+            def description():
+                """getting elements from the description class"""
+
+                try:
+                    self.driver.find_element(By.CLASS_NAME, 'g-user-content')  # description class
+                    description_elements = self.driver.find_elements(By.CSS_SELECTOR,
+                                                                     '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(3) > div > div > div:nth-child(1) > div')
+
+                    for element in description_elements:
+
+                        nonlocal trainee, junior, middle, senior  # updates the value of variables
+
+                        element = element.text.lower()  # makes all letters in text small
+                        name = db.vacancy_name(num).lower()
+
+                        trainee = 0
+                        junior = 0
+                        middle = 0
+                        senior = 0
+
+                        # if the given words are in the text or vacancy name, then updates the value of the variable to 1
+                        if ('стажер' in name) or ('trainee' in name) or \
+                                ('стажер' in element) or ('trainee' in element):
+                            trainee = 1
+                        if ('junior' in name) or ('джуниор' in name) or ('джун' in name) or \
+                                ('junior' in element) or ('джуниор' in element) or ('джун' in element):
+                            junior = 1
+                        if ('middle' in name) or ('mid' in name) or ('мидл' in name) or ('миддл' in name) or \
+                                ('middle' in element) or ('mid' in element) or ('мидл' in element) or ('миддл' in element):
+                            middle = 1
+                        if ('senior' in name) or ('сеньор' in name) or ('синьор' in name) or \
+                                ('senior' in element) or ('сеньор' in element) or ('синьор' in element):
+                            senior = 1
+                except Exception as _ex:
+                    print(_ex)
+
+            def required_experience():
+
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, 'vacancy-description-list-item'))
+                    )
+                    self.driver.find_element(By.CLASS_NAME, 'vacancy-description-list-item')  # required experience class
+                    experience_element = self.driver.find_element(By.CSS_SELECTOR,
+                                                                  '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(1) > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div > p:nth-child(3) > span')
+                    nums = re.sub(r'[^0-9–]+', r'', experience_element.text)  # removes all characters except 0-9 and –
+                    return nums
+
+                except Exception as _ex:
+                    print(_ex)
+
+            def key_skills():
+                nonlocal skills
+                skills = []
+
+                for number in range(1, 31):
+
+                    try:
+                        self.driver.find_element(By.CLASS_NAME, 'bloko-tag-list')
+                        element = self.driver.find_element(By.CSS_SELECTOR, f'div:nth-child(3) > div > div:nth-child({number}) > span')
+                        element = element.text
+                        skills.append(element)
+                    except Exception:
+                        break
+
+                if len(skills) < 2:
+                    skills = [0, 0]  # checking if elements are in a list
+                print(num, skills)
+
+            experience = required_experience()
+            description()  # calls variables: trainee, junior, middle, senior
+            key_skills()  # call list
+
+            db.insert_other_data(experience, trainee, junior, middle, senior, skills, num)
+            time.sleep(random.randrange(2, 5))
 
 
 class DataBase:
@@ -286,27 +202,28 @@ class DataBase:
             print('[INFO] Error while working with PostgreSQL', _ex)
             self.connection.close()  # closing the PostgreSQL
 
-
-    def insert_name_and_link(self, name, url, experience, trainee, junior, middle, senior):
+    def insert_name_and_link(self, name, url):
         """Insert data into table"""  # имена и ссылки
 
         try:
             self.cursor.execute(
-                f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy, required_experience, trainee, junior, middle, senior) VALUES
-                ('{name}', '{url}', '{experience}', '{trainee}', '{junior}', '{middle}', '{senior}');"""
+                f"""INSERT INTO vacancies (vacancy_name, link_to_vacancy) VALUES
+                ('{name}', '{url}');"""
             )
         except Exception as _ex:
-            print('[INFO] No data has been inserted')
+            print('[ERROR]', _ex)
 
-
-
-    def insert_other_data(self, experience, trainee, junior, middle, senior):
+    def insert_other_data(self, experience, trainee, junior, middle, senior, skills, num):
         self.cursor.execute(
-            f"""INSERT INTO vacancies (required_experience, trainee, junior, middle, senior) VALUES
-                    ('{experience}', '{trainee}', '{junior}', '{middle}', '{senior}');"""
-        )
-
-
+            f"""UPDATE vacancies SET 
+            required_experience = '{experience}', 
+            trainee = '{trainee}', 
+            junior = '{junior}', 
+            middle = '{middle}', 
+            senior = '{senior}',
+            key_skills = ARRAY {skills}
+            WHERE id = '{num}';"""
+        )      # ARRAY -> massive
 
     def count_strings(self):
         """Counts the number of rows in a table"""
@@ -321,14 +238,10 @@ class DataBase:
         links = self.cursor.fetchone()
         return links[0]
 
-
-
     def vacancy_name(self, num):
         self.cursor.execute(f"SELECT vacancy_name FROM vacancies WHERE id = '{num}';")
         name = self.cursor.fetchone()
         return name[0]
-
-
 
     def create_table(self):
         """Creating a new table"""
@@ -347,6 +260,14 @@ class DataBase:
                 key_skills text[]);"""
         )
         print('[INFO] Table created successfully')
+
+    def duplicate_deleting(self):
+        """Removes all duplicate vacancies"""
+
+        self.cursor.execute(
+            """DELETE FROM vacancies WHERE id NOT IN 
+            (SELECT MIN(id) FROM vacancies GROUP BY link_to_vacancy);"""
+        )
 
     def delete_table(self):
         """Deleting a table"""
