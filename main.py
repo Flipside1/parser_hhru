@@ -7,10 +7,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from selenium.common.exceptions import TimeoutException
 
 import psycopg2
-from config import host, user, password, db_name
-
+import configuration as config
 string = None
 
 
@@ -22,12 +22,12 @@ class SearchVacancies:
 
     def parsing_names(self):
         """Ищет названия вакансий и ссылки на них
-        После этого сохраняет в базу данных PostgreSQL"""
+        После этого сохраняет их в базу данных"""
         try:
             db.count_strings()  # page count on request
 
-            # db.delete_table()  # deleting a table
-            # db.create_table()  # creating a table
+            db.delete_table()  # deleting a table
+            db.create_table()  # creating a table
             search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # по каким тегам ищутся вакансии
 
             db.start_db()
@@ -98,7 +98,15 @@ class SearchVacancies:
         for num in range(1, db.count_strings()+1):
 
             link = db.following_a_link(num)
-            self.driver.get(link)  # clicks to links for each vacancy in a table
+
+            try:
+                # self.driver.implicitly_wait(3)
+                WebDriverWait(self.driver.get(link), 10)  # clicks to links for each vacancy in a table
+                # self.driver.get(link)  # clicks to links for each vacancy in a table
+
+            except TimeoutException as _te:
+                print(_te)
+                print('[ERROR] LINK')
 
             def description():
                 """getting elements from the description class"""
@@ -135,6 +143,7 @@ class SearchVacancies:
                             senior = 1
                 except Exception as _ex:
                     print(_ex)
+                    print('[ERROR] DESCRIPTION')
 
             def required_experience():
 
@@ -148,6 +157,7 @@ class SearchVacancies:
 
                 except Exception as _ex:
                     print(_ex)
+                    print('[ERROR] REQUIRED EXPERIENCE')
 
             def key_skills():
                 nonlocal skills
@@ -162,6 +172,7 @@ class SearchVacancies:
                         element = element.text
                         skills.append(element)
                     except Exception as _ex:
+                        print('[ERROR] KEY SKILLS')
                         break
 
                 if len(skills) < 2:
@@ -190,10 +201,10 @@ class DataBase:
         try:
             # connecting to PostgreSQL
             self.connection = psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
+                host=config.host,
+                user=config.user,
+                password=config.password,
+                database=config.db_name
             )
             self.cursor = self.connection.cursor()  # defines the cursor
             self.connection.autocommit = True  # enable autosave data
@@ -246,6 +257,14 @@ class DataBase:
         name = self.cursor.fetchone()
         return name[0]
 
+    def duplicate_deleting(self):
+        """Removes all duplicate vacancies"""
+
+        self.cursor.execute(
+            """DELETE FROM vacancies WHERE id NOT IN 
+            (SELECT MIN(id) FROM vacancies GROUP BY link_to_vacancy);"""
+        )
+
     def create_table(self):
         """Creating a new table"""
 
@@ -263,14 +282,6 @@ class DataBase:
                 key_skills text[]);"""
         )
         print('[INFO] Table created successfully')
-
-    def duplicate_deleting(self):
-        """Removes all duplicate vacancies"""
-
-        self.cursor.execute(
-            """DELETE FROM vacancies WHERE id NOT IN 
-            (SELECT MIN(id) FROM vacancies GROUP BY link_to_vacancy);"""
-        )
 
     def delete_table(self):
         """Deleting a table"""

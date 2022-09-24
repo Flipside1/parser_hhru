@@ -1,5 +1,5 @@
 import psycopg2
-from config import host, user, password, db_name
+from configuration import host, user, password, db_name
 
 
 try:
@@ -16,17 +16,6 @@ try:
     with connection.cursor() as cursor:
         cursor.execute('SELECT version();')
         print(f'Server version: {cursor.fetchone()}')
-
-    # # create a new table
-    # with connection.cursor() as cursor:
-    #     cursor.execute(
-    #         """CREATE TABLE vacancies(
-    #             id serial PRIMARY KEY,
-    #             vacancy_name varchar(50) NOT NULL,
-    #             link_to_vacancy text NOT NULL);"""
-    #     )
-    #
-    #     print('[INFO] Table created successfully')
 
     # insert data into a table
     with connection.cursor() as cursor:
