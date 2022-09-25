@@ -21,24 +21,24 @@ class SearchVacancies:
         self.pages = None
 
     def parsing_names(self):
-        """Ищет названия вакансий и ссылки на них
-        После этого сохраняет их в базу данных"""
+        """Searches for job titles and links to them
+        After that, it saves them to the database."""
         try:
             db.count_strings()  # page count on request
 
             db.delete_table()  # deleting a table
             db.create_table()  # creating a table
-            search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # по каким тегам ищутся вакансии
+            search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # tags to vacancy
 
             db.start_db()
 
             for url in search_name:
-                self.driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # вписывает в поле слово вакансии
+                self.driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # enters the vacancy tag in the field
                 time.sleep(random.randrange(3, 5))
 
-                self.amount_pages()  # считает количество страниц
+                self.amount_pages()  # counts the number of pages
 
-                for page in range(self.pages):  # переходит с одной страницы на другую
+                for page in range(self.pages):  # moves from one page to another
                     self.driver.get(
                         f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
 
@@ -47,11 +47,11 @@ class SearchVacancies:
                             EC.presence_of_all_elements_located((By.TAG_NAME, 'a'))
                         )  # searching "a" tag
 
-                        for element in elements:  # перебирает все элементы, которые спарсились
-                            if ('Python' in element.text) or ('Django' in element.text):  # если в названии вакансии есть определенные слова
-                                name = element.text  # выводит текст названия вакансии
-                                url = element.get_attribute('href')  # находит ссылки на вакансии
-                                db.insert_name_and_link(name, url)  # записывает названия и ссылки
+                        for element in elements:  # iterates over all elements that are parsed
+                            if ('Python' in element.text) or ('Django' in element.text):  # filters vacancy titles
+                                name = element.text  # displays the text of the vacancy title
+                                url = element.get_attribute('href')  # finds a link to this vacancy
+                                db.insert_name_and_link(name, url)  # writes to database
                     except Exception as _ex:
                         print(_ex)
 
@@ -67,20 +67,20 @@ class SearchVacancies:
             print(f"[ERROR] {_ex}")
 
     def amount_pages(self):
-        """Ищет количество страниц на сайте"""
+        """Looks for the number of pages on the site"""
 
-        self.driver.find_element(By.CLASS_NAME, 'pager')  # ищет элемент класса (чтобы посчитать количество страниц)
+        self.driver.find_element(By.CLASS_NAME, 'pager')  # looks for a class element (to count the number of pages)
 
-        # записывает в переменную количество страниц на сайте
+        # writes to a variable the number of pages on the site
         pages = self.driver.find_element(By.CSS_SELECTOR,
                                          '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div:nth-child(3) > div.sticky-sidebar-and-content--NmOyAQ7IxIOkgRiBRSEg > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-9.bloko-column_l-13 > div > div.bloko-gap.bloko-gap_top > div > span:nth-child(6) > span.pager-item-not-in-short-range > a > span')
-        self.pages = int(pages.text)  # преобразовывает текст в числовой формат
+        self.pages = int(pages.text)  # converts str to int
         print(self.pages)
 
     def transition_to_page(self):
-        """Переходит на каждую страницу на сайте"""
+        """Goes to every page on the site"""
 
-        for i in range(self.pages):  # переходит с одной ссылки (страницы) на другую
+        for i in range(self.pages):  # moves from one page of the site to another
             self.driver.get(f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={i}&hhtmFrom=vacancy_search_list')
 
     def transition_to_links(self):
@@ -146,6 +146,7 @@ class SearchVacancies:
                     print('[ERROR] DESCRIPTION')
 
             def required_experience():
+                """getting elements from the required experience class"""
 
                 try:
                     experience_element = WebDriverWait(self.driver, 5).until(
@@ -160,30 +161,38 @@ class SearchVacancies:
                     print('[ERROR] REQUIRED EXPERIENCE')
 
             def key_skills():
+                """getting elements from the key skills class"""
+
                 nonlocal skills
                 skills = []
-
                 for number in range(1, 31):
 
                     try:
                         element = WebDriverWait(self.driver, 3).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, f'div:nth-child(3) > div > div:nth-child({number}) > span'))
+                            EC.presence_of_element_located((By.XPATH, f'/html/body/div[5]/div/div[3]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div[3]/div[2]/div/div[{number}]/span'))
                         )
-                        element = element.text
-                        skills.append(element)
+                        skill = element.text
+                        skills.append(skill)
                     except Exception as _ex:
-                        print('[ERROR] KEY SKILLS')
                         break
 
-                if len(skills) < 2:
-                    skills = [0, 0]  # checking if elements are in a list
+                if len(skills) < 1:  # checking if elements are in a list
+                    skills = [0]
                 print(num, skills)
+
+            def company_name():
+                element = WebDriverWait(self.driver, 3).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(2) > div > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-6 > div > div > div > div.vacancy-company-details > span > a > span'))
+                )
+                name = element.text
+                return name
 
             experience = required_experience()
             description()  # calls variables: trainee, junior, middle, senior
             key_skills()  # call list
+            c_name = company_name()
 
-            db.insert_other_data(experience, trainee, junior, middle, senior, skills, num)
+            db.insert_other_data(c_name, experience, trainee, junior, middle, senior, skills, num)
             time.sleep(random.randrange(2, 5))
 
 
@@ -217,7 +226,8 @@ class DataBase:
             self.connection.close()  # closing the PostgreSQL
 
     def insert_name_and_link(self, name, url):
-        """Insert data into table"""  # имена и ссылки
+        """Insert data into table
+        (names and urls)"""
 
         try:
             self.cursor.execute(
@@ -227,9 +237,13 @@ class DataBase:
         except Exception as _ex:
             print('[ERROR]', _ex)
 
-    def insert_other_data(self, experience, trainee, junior, middle, senior, skills, num):
+    def insert_other_data(self, company_name, experience, trainee, junior, middle, senior, skills, num):
+        """Insert data into table
+        (experience, skills)"""
+
         self.cursor.execute(
             f"""UPDATE vacancies SET 
+            company_name = '{company_name}',
             required_experience = '{experience}', 
             trainee = '{trainee}', 
             junior = '{junior}', 
@@ -274,6 +288,7 @@ class DataBase:
                 id serial PRIMARY KEY,
                 vacancy_name varchar(100) NOT NULL,
                 link_to_vacancy text NOT NULL,
+                company_name text,
                 required_experience text,
                 trainee text,
                 junior text,
