@@ -6,7 +6,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
 from selenium.common.exceptions import TimeoutException
 
 import psycopg2
@@ -14,7 +13,7 @@ import configuration as config
 string = None
 
 
-class SearchVacancies:
+class Parsing:
 
     def __init__(self):
         self.driver = webdriver.Firefox()
@@ -146,7 +145,7 @@ class SearchVacancies:
                     print('[ERROR] DESCRIPTION')
 
             def required_experience():
-                """getting elements from the required experience class"""
+                """getting element from the required experience class"""
 
                 try:
                     experience_element = WebDriverWait(self.driver, 5).until(
@@ -181,6 +180,8 @@ class SearchVacancies:
                 print(num, skills)
 
             def company_name():
+                """looking for company name"""
+
                 element = WebDriverWait(self.driver, 3).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, '#HH-React-Root > div > div.HH-MainContent.HH-Supernova-MainContent > div.main-content > div > div > div > div > div.bloko-column.bloko-column_container.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-10 > div:nth-child(2) > div > div.bloko-column.bloko-column_xs-4.bloko-column_s-8.bloko-column_m-12.bloko-column_l-6 > div > div > div > div.vacancy-company-details > span > a > span'))
                 )
@@ -189,7 +190,7 @@ class SearchVacancies:
 
             experience = required_experience()
             description()  # calls variables: trainee, junior, middle, senior
-            key_skills()  # call list
+            key_skills()  # list of skills
             c_name = company_name()
 
             db.insert_other_data(c_name, experience, trainee, junior, middle, senior, skills, num)
@@ -261,12 +262,16 @@ class DataBase:
         return int(strings[0])  # number of rows in a table
 
     def following_a_link(self, num):
+        """follows the link to vacancy from the database"""
 
         self.cursor.execute(f"SELECT link_to_vacancy FROM vacancies WHERE id = '{num}';")
         links = self.cursor.fetchone()
         return links[0]
 
     def vacancy_name(self, num):
+        """takes the name of the job to filter the skills in the
+        "SearchVacancies" class in the "description" function"""
+
         self.cursor.execute(f"SELECT vacancy_name FROM vacancies WHERE id = '{num}';")
         name = self.cursor.fetchone()
         return name[0]
@@ -312,10 +317,10 @@ class DataBase:
         print('[INFO] PostgreSQL connection closed')
 
 
-search = SearchVacancies()
+parsing = Parsing()
 db = DataBase()
 
 if __name__ == '__main__':
-    search.parsing_names()
+    parsing.parsing_names()
 else:
     print('ERROR')
