@@ -29,8 +29,6 @@ The lines change in the __"main"__ file.
 
       search_name = ['django', 'python', 'developer']
 
-    ![](for README/screenshot.jpg)
-
     - You can change the tags that will be used to search for vacancies
     - Also, you can add new tags separated by commas.
 
