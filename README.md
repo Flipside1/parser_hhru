@@ -29,7 +29,7 @@ The lines change in the __"main"__ file.
 
       search_name = ['django', 'python', 'developer']
 
-    - You can change the tags that will be used to search for vacancies
+    - You can change the tags that will be used to search for vacancies.
     - Also, you can add new tags separated by commas.
 
 
