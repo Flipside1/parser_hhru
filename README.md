@@ -43,4 +43,4 @@ ___
 
 #### My social networks:
 - [My Telegram](https://t.me/maxim_odintsov)
-- [My GitHub](https://github.com/Flipside1?tab=repositories)
+- [My GitHub](https://github.com/MaximOdintsov?tab=repositories)
