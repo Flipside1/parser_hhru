@@ -28,19 +28,20 @@ class Parsing:
 
             db.delete_table()  # deleting a table
             db.create_table()  # creating a table
-            search_name = ['django', 'python', 'developer', 'разработчик', 'программист']  # tags to vacancy
+            search_name = ['developer', 'django', 'python', 'разработчик', 'программист']  # tags to vacancy
 
             db.start_db()
 
             for url in search_name:
+                url_v2 = url
                 self.driver.get(f'https://kirov.hh.ru/search/vacancy?text={url}')  # enters the vacancy tag in the field
-                time.sleep(random.randrange(3, 5))
-
                 self.amount_pages()  # counts the number of pages
+                time.sleep(random.randrange(3, 5))
 
                 for page in range(self.pages):  # moves from one page to another
                     self.driver.get(
-                        f'https://kirov.hh.ru/search/vacancy?text=django&from=suggest_post&salary=&clusters=true&ored_clusters=true&enable_snippets=true&page={page}&hhtmFrom=vacancy_search_list')
+                        f'https://kirov.hh.ru/search/vacancy?text={url_v2}&from=suggest_post&area=&page={page}&hhtmFrom=vacancy_search_list'
+                    )
 
                     try:
                         elements = WebDriverWait(self.driver, 2).until(
@@ -54,6 +55,7 @@ class Parsing:
                                 db.insert_name_and_link(name, url)  # writes to database
                     except Exception as _ex:
                         print(_ex)
+                    time.sleep(random.randrange(3, 5))
 
                 self.transition_to_links()
 
